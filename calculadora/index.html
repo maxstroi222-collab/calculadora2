@@ -3,95 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora Inventario CS2</title>
+    <title>Mi Inventario CS2</title>
     <style>
-        body { font-family: sans-serif; background-color: #1b2838; color: white; display: flex; justify-content: center; padding-top: 50px; }
-        .card { background-color: #2a475e; padding: 2rem; border-radius: 10px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; background: #171a21; border: 1px solid #4a6680; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #66c0f4; border: none; font-weight: bold; cursor: pointer; color: #171a21; }
-        button:hover { background: #419dc9; }
-        .result { margin-top: 20px; padding: 15px; background: #171a21; display: none; text-align: center; border-radius: 5px; }
-        .loading { font-size: 0.8rem; color: #8f98a0; display: none; text-align: center; margin-top: 10px; }
-        .label { font-size: 0.9rem; color: #66c0f4; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1b2838;
+            color: #c7d5e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #66c0f4; }
+        
+        .controls {
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        button.refresh-btn {
+            background: linear-gradient(90deg, #47bfff 0%, #1a9fff 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        button.refresh-btn:hover { opacity: 0.9; }
+
+        .inventory-table {
+            width: 100%;
+            max-width: 900px;
+            border-collapse: collapse;
+            background-color: #171a21;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #2a475e;
+        }
+
+        th {
+            background-color: #2a475e;
+            color: #66c0f4;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        /* Inputs dentro de la tabla */
+        input {
+            background-color: #0d1015;
+            border: 1px solid #4a6680;
+            color: white;
+            padding: 8px;
+            width: 80px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        input:focus { outline: none; border-color: #66c0f4; }
+
+        .profit-positive { color: #4caf50; font-weight: bold; }
+        .profit-negative { color: #f44336; font-weight: bold; }
+        .loading-text { color: #f0ad4e; font-size: 0.9rem; }
+
+        .summary-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #101216;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            border-top: 2px solid #66c0f4;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2 style="text-align: center; margin-top: 0;">Calculadora Steam API</h2>
+    <h1>Mi Cartera de Skins</h1>
 
-    <div class="label">Nombre EXACTO de la Skin (Inglés)</div>
-    <input type="text" id="skinName" placeholder="Ej: AK-47 | Slate (Minimal Wear)">
+    <div class="controls">
+        <button class="refresh-btn" onclick="actualizarPrecios()">🔄 Actualizar Precios Mercado</button>
+    </div>
 
-    <div class="label">Precio al que compraste (Total o Unitario)</div>
-    <input type="number" id="buyPrice" placeholder="0.00">
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th style="width: 30%">Skin</th>
+                <th>Cantidad</th>
+                <th>Compra Unit. (€)</th>
+                <th>Precio Mercado</th>
+                <th>Beneficio Total</th>
+            </tr>
+        </thead>
+        <tbody id="inventory-body">
+            </tbody>
+    </table>
 
-    <div class="label">Cantidad</div>
-    <input type="number" id="quantity" value="1">
-
-    <button onclick="calcular()">Consultar API y Calcular</button>
-    <div id="loading" class="loading">Consultando precios en Steam...</div>
-
-    <div id="result" class="result"></div>
-</div>
+    <div style="height: 80px;"></div> <div class="summary-bar">
+        <div>Inversión: <span id="total-invested">0.00€</span></div>
+        <div>Valor Actual (Neto): <span id="total-value">0.00€</span></div>
+        <div>Profit Total: <span id="total-profit">0.00€</span></div>
+    </div>
 
 <script>
-    async function calcular() {
-        const skinName = document.getElementById('skinName').value;
-        const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
-        const qty = parseFloat(document.getElementById('quantity').value) || 1;
+    // --- 1. CONFIGURACIÓN: AÑADE AQUÍ TUS SKINS ---
+    // Debes poner el nombre exacto de mercado (Market Hash Name)
+    const misSkins = [
+        { nombre: "AK-47 | Slate (MW)", hash: "AK-47 | Slate (Minimal Wear)" },
+        { nombre: "AWP | Atheris (FT)", hash: "AWP | Atheris (Field-Tested)" },
+        { nombre: "Caja Revolution", hash: "Revolution Case" },
+        { nombre: "M4A1-S | Night Terror (FT)", hash: "M4A1-S | Night Terror (Field-Tested)" }
+    ];
+
+    // Cargar datos guardados al iniciar
+    const savedData = JSON.parse(localStorage.getItem('cs_inventory_data')) || {};
+
+    const tableBody = document.getElementById('inventory-body');
+
+    // --- 2. GENERAR TABLA INICIAL ---
+    function initTable() {
+        tableBody.innerHTML = '';
         
-        const resultDiv = document.getElementById('result');
-        const loadingDiv = document.getElementById('loading');
-
-        if(!skinName) return alert("Pon el nombre de la skin");
-
-        loadingDiv.style.display = 'block';
-        resultDiv.style.display = 'none';
-
-        try {
-            // Llamamos a NUESTRO servidor intermedio, no a Steam directo
-            const response = await fetch(`/api/price?skin=${encodeURIComponent(skinName)}`);
-            const data = await response.json();
-
-            loadingDiv.style.display = 'none';
-
-            if (data.error) {
-                alert("Error: " + data.error);
-                return;
-            }
-
-            // Steam devuelve el precio como texto: "14,50€" o "$14.50"
-            // Necesitamos limpiarlo para poder calcular
-            let priceString = data.lowest_price; 
-            // Quitamos símbolos de moneda y cambiamos coma por punto
-            let priceNum = parseFloat(priceString.replace(/[^\d,.-]/g, '').replace(',','.'));
-
-            const totalValue = priceNum * qty;
-            const steamFee = totalValue * 0.15; // 15% que se queda Gabe Newell
-            const netValue = totalValue - steamFee;
-            const profit = netValue - (buyPrice * qty);
-
-            const color = profit >= 0 ? '#4caf50' : '#f44336';
+        misSkins.forEach((skin, index) => {
+            // Recuperar datos guardados o poner 0 por defecto
+            const saved = savedData[skin.hash] || { qty: 0, buyPrice: 0 };
             
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = `
-                <div>Precio actual en Market: <strong>${priceString}</strong></div>
-                <hr style="border-color: #4a6680; opacity: 0.3;">
-                <div style="font-size: 1.2rem; color: ${color}; font-weight: bold;">
-                    Beneficio: ${profit.toFixed(2)}€
-                </div>
-                <div style="font-size: 0.8rem; color: #ccc; margin-top: 5px;">
-                    (Después de tasas de Steam)
-                </div>
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <strong>${skin.nombre}</strong><br>
+                    <span style="font-size:0.75rem; color:#8f98a0;">${skin.hash}</span>
+                </td>
+                <td>
+                    <input type="number" value="${saved.qty}" min="0" 
+                        onchange="saveInput('${skin.hash}', 'qty', this.value)">
+                </td>
+                <td>
+                    <input type="number" value="${saved.buyPrice}" step="0.01" min="0" 
+                        onchange="saveInput('${skin.hash}', 'buyPrice', this.value)">
+                </td>
+                <td id="price-${index}" class="market-price">---</td>
+                <td id="profit-${index}">---</td>
             `;
-
-        } catch (err) {
-            console.error(err);
-            loadingDiv.style.display = 'none';
-            alert("Hubo un error al conectar.");
-        }
+            tableBody.appendChild(row);
+        });
+        
+        calcularTotales(); // Calcular con los datos que ya tenemos guardados (aunque falte precio mercado)
     }
+
+    // --- 3. GUARDAR DATOS (LocalStorage) ---
+    function saveInput(hash, field, value) {
+        if (!savedData[hash]) savedData[hash] = {};
+        savedData[hash][field] = parseFloat(value) || 0;
+        
+        localStorage.setItem('cs_inventory_data', JSON.stringify(savedData));
+        calcularTotales(); // Recalcular al cambiar inputs
+    }
+
+    // --- 4. LLAMAR A LA API (Actualizar precios) ---
+    async function actualizarPrecios() {
+        // Poner estado de carga
+        misSkins.forEach((_, index) => {
+            document.getElementById(`price-${index}`).innerHTML = '<span class="loading-text">Cargando...</span>';
+        });
+
+        // Recorremos las skins y pedimos precio
+        for (let i = 0; i < misSkins.length; i++) {
+            const skin = misSkins[i];
+            try {
+                // Llamada a TU backend en Vercel
+                const res = await fetch(`/api/price?skin=${encodeURIComponent(skin.hash)}`);
+                const data = await res.json();
+                
+                if (data.lowest_price) {
+                    // Limpiar el precio (quitar € o $ y convertir a número)
+                    let priceClean = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
+                    
+                    // Guardamos el precio actual en el objeto temporal del DOM para cálculos
+                    document.getElementById(`price-${index}`).dataset.price = priceClean;
+                    document.getElementById(`price-${index}`).innerText = `${priceClean.toFixed(2)}€`;
+                } else {
+                    document.getElementById(`price-${index}`).innerText = "Error";
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById(`price-${index}`).innerText = "Falló";
+            }
+        }
+        calcularTotales();
+    }
+
+    // --- 5. CÁLCULOS MATEMÁTICOS ---
+    function calcularTotales() {
+        let totalInvested = 0;
+        let totalNetValue = 0;
+
+        misSkins.forEach((skin, index) => {
+            const saved = savedData[skin.hash] || { qty: 0, buyPrice: 0 };
+            const currentPriceCell = document.getElementById(`price-${index}`);
+            const profitCell = document.getElementById(`profit-${index}`);
+            
+            // Si aun no hemos descargado el precio, usamos 0 para calcular (o el último conocido si quisieras mejorarlo)
+            const currentPrice = parseFloat(currentPriceCell.dataset.price) || 0;
+
+            const invested = saved.qty * saved.buyPrice;
+            
+            // Steam Fee: 15% (recibes el 0.85)
+            const revenueNet = (currentPrice * saved.qty) * 0.85;
+            const profit = revenueNet - invested;
+
+            // Totales globales
+            totalInvested += invested;
+            if (currentPrice > 0) totalNetValue += revenueNet;
+
+            // Actualizar celda de beneficio individual
+            if (currentPrice > 0) {
+                profitCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
+                profitCell.className = profit > 0 ? 'profit-positive' : 'profit-negative';
+            }
+        });
+
+        // Actualizar barra inferior
+        document.getElementById('total-invested').innerText = `${totalInvested.toFixed(2)}€`;
+        document.getElementById('total-value').innerText = `${totalNetValue.toFixed(2)}€`;
+        
+        const totalProfit = totalNetValue - totalInvested;
+        const totalSpan = document.getElementById('total-profit');
+        totalSpan.innerText = `${totalProfit > 0 ? '+' : ''}${totalProfit.toFixed(2)}€`;
+        totalSpan.style.color = totalProfit >= 0 ? '#4caf50' : '#f44336';
+    }
+
+    // Iniciar la tabla al cargar la página
+    initTable();
 </script>
 
 </body>
