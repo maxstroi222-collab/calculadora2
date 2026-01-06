@@ -174,14 +174,16 @@
         calcularTotales(); // Recalcular al cambiar inputs
     }
 
-    // --- 4. LLAMAR A LA API (Actualizar precios) ---
+// --- 4. LLAMAR A LA API (Actualizar precios) ---
     async function actualizarPrecios() {
-        // Poner estado de carga
+        // Poner estado de carga visual
         misSkins.forEach((_, index) => {
-            document.getElementById(`price-${index}`).innerHTML = '<span class="loading-text">Cargando...</span>';
+            const celda = document.getElementById(`price-${index}`);
+            if(celda) celda.innerHTML = '<span class="loading-text">Cargando...</span>';
         });
 
         // Recorremos las skins y pedimos precio
+        // CORRECCIÓN: Ahora usamos 'i' consistentemente
         for (let i = 0; i < misSkins.length; i++) {
             const skin = misSkins[i];
             try {
@@ -189,19 +191,22 @@
                 const res = await fetch(`/api/price?skin=${encodeURIComponent(skin.hash)}`);
                 const data = await res.json();
                 
+                const celdaPrecio = document.getElementById(`price-${i}`); // Aquí usamos 'i'
+                
                 if (data.lowest_price) {
                     // Limpiar el precio (quitar € o $ y convertir a número)
                     let priceClean = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
                     
-                    // Guardamos el precio actual en el objeto temporal del DOM para cálculos
-                    document.getElementById(`price-${index}`).dataset.price = priceClean;
-                    document.getElementById(`price-${index}`).innerText = `${priceClean.toFixed(2)}€`;
+                    // Guardamos el precio actual
+                    celdaPrecio.dataset.price = priceClean;
+                    celdaPrecio.innerText = `${priceClean.toFixed(2)}€`;
                 } else {
-                    document.getElementById(`price-${index}`).innerText = "Error";
+                    celdaPrecio.innerText = "Error";
                 }
             } catch (e) {
                 console.error(e);
-                document.getElementById(`price-${index}`).innerText = "Falló";
+                // Si falla, mostramos error en la celda correcta usando 'i'
+                document.getElementById(`price-${i}`).innerText = "Falló";
             }
         }
         calcularTotales();
@@ -253,4 +258,5 @@
 
 </body>
 </html>
+
 
