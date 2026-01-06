@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Inventario CS2</title>
+    <style>
+        body { font-family: sans-serif; background-color: #1b2838; color: white; display: flex; justify-content: center; padding-top: 50px; }
+        .card { background-color: #2a475e; padding: 2rem; border-radius: 10px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; background: #171a21; border: 1px solid #4a6680; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #66c0f4; border: none; font-weight: bold; cursor: pointer; color: #171a21; }
+        button:hover { background: #419dc9; }
+        .result { margin-top: 20px; padding: 15px; background: #171a21; display: none; text-align: center; border-radius: 5px; }
+        .loading { font-size: 0.8rem; color: #8f98a0; display: none; text-align: center; margin-top: 10px; }
+        .label { font-size: 0.9rem; color: #66c0f4; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 style="text-align: center; margin-top: 0;">Calculadora Steam API</h2>
+
+    <div class="label">Nombre EXACTO de la Skin (Inglés)</div>
+    <input type="text" id="skinName" placeholder="Ej: AK-47 | Slate (Minimal Wear)">
+
+    <div class="label">Precio al que compraste (Total o Unitario)</div>
+    <input type="number" id="buyPrice" placeholder="0.00">
+
+    <div class="label">Cantidad</div>
+    <input type="number" id="quantity" value="1">
+
+    <button onclick="calcular()">Consultar API y Calcular</button>
+    <div id="loading" class="loading">Consultando precios en Steam...</div>
+
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+    async function calcular() {
+        const skinName = document.getElementById('skinName').value;
+        const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
+        const qty = parseFloat(document.getElementById('quantity').value) || 1;
+        
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.getElementById('loading');
+
+        if(!skinName) return alert("Pon el nombre de la skin");
+
+        loadingDiv.style.display = 'block';
+        resultDiv.style.display = 'none';
+
+        try {
+            // Llamamos a NUESTRO servidor intermedio, no a Steam directo
+            const response = await fetch(`/api/price?skin=${encodeURIComponent(skinName)}`);
+            const data = await response.json();
+
+            loadingDiv.style.display = 'none';
+
+            if (data.error) {
+                alert("Error: " + data.error);
+                return;
+            }
+
+            // Steam devuelve el precio como texto: "14,50€" o "$14.50"
+            // Necesitamos limpiarlo para poder calcular
+            let priceString = data.lowest_price; 
+            // Quitamos símbolos de moneda y cambiamos coma por punto
+            let priceNum = parseFloat(priceString.replace(/[^\d,.-]/g, '').replace(',','.'));
+
+            const totalValue = priceNum * qty;
+            const steamFee = totalValue * 0.15; // 15% que se queda Gabe Newell
+            const netValue = totalValue - steamFee;
+            const profit = netValue - (buyPrice * qty);
+
+            const color = profit >= 0 ? '#4caf50' : '#f44336';
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div>Precio actual en Market: <strong>${priceString}</strong></div>
+                <hr style="border-color: #4a6680; opacity: 0.3;">
+                <div style="font-size: 1.2rem; color: ${color}; font-weight: bold;">
+                    Beneficio: ${profit.toFixed(2)}€
+                </div>
+                <div style="font-size: 0.8rem; color: #ccc; margin-top: 5px;">
+                    (Después de tasas de Steam)
+                </div>
+            `;
+
+        } catch (err) {
+            console.error(err);
+            loadingDiv.style.display = 'none';
+            alert("Hubo un error al conectar.");
+        }
+    }
+</script>
+
+</body>
+</html>
