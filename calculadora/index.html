@@ -160,14 +160,26 @@
         // ---------------- AUTH ----------------
         // Función helper para manejar visibilidad de forma segura
         function setVisibility(element, visible) {
-            if (!element) return;
+            if (!element) {
+                console.error('setVisibility: elemento no existe');
+                return;
+            }
+            console.log('setVisibility:', element.id, 'visible:', visible);
+            console.log('  Clases ANTES:', element.className);
+            
             if (visible) {
                 element.classList.remove('hidden');
                 element.classList.add('visible');
+                element.style.display = 'block'; // FORZAR con inline style
             } else {
                 element.classList.remove('visible');
                 element.classList.add('hidden');
+                element.style.display = 'none'; // FORZAR con inline style
             }
+            
+            console.log('  Clases DESPUÉS:', element.className);
+            console.log('  Style inline:', element.style.display);
+            console.log('  Display computed:', window.getComputedStyle(element).display);
         }
 
         window.handleLogin = async () => {
@@ -186,6 +198,9 @@
 
         // --- SISTEMA DE VISIBILIDAD (Corregido) ---
         onAuthStateChanged(auth, async (user) => {
+            console.log('=== onAuthStateChanged ejecutado ===');
+            console.log('Usuario:', user ? user.email : 'null');
+            
             const loadingScreen = document.getElementById('loading-screen');
             const authContainer = document.getElementById('auth-container');
             const appContainer = document.getElementById('app-container');
