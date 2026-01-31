@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INVENTARIO CS</title>
+    <title>CS2 Skin Tracker PRO</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* ESTILOS GENERALES */
         body { font-family: 'Segoe UI', sans-serif; background-color: #1b2838; color: #c7d5e0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
@@ -11,16 +12,15 @@
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
         input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
 
-        /* VISTAS (LOGIN VS APP) */
-        #auth-container, #app-container { width: 100%; max-width: 900px; display: none; }
+        /* VISTAS */
+        #auth-container { width: 100%; max-width: 900px; display: block; }
+        #app-container { width: 100%; max-width: 900px; display: none; }
         .active-view { display: block !important; }
 
-        /* AUTH STYLES */
+        /* AUTH & CONTROLS */
         .auth-box { background: #171a21; padding: 40px; border-radius: 8px; text-align: center; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .auth-box input { width: 90%; margin-bottom: 15px; display: block; margin: 10px auto; }
         .auth-btn { background: linear-gradient(90deg, #47bfff 0%, #1a9fff 100%); color: white; width: 100%; }
-
-        /* APP CONTROLS */
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .refresh-btn { background: #4caf50; color: white; }
         .logout-btn { background: #d9534f; color: white; font-size: 0.8rem; }
@@ -29,20 +29,32 @@
         .inventory-table { width: 100%; border-collapse: collapse; background-color: #171a21; border-radius: 8px; overflow: hidden; margin-bottom: 100px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a475e; }
         th { background-color: #2a475e; color: #66c0f4; }
-        
         .profit-positive { color: #4caf50; font-weight: bold; }
         .profit-negative { color: #f44336; font-weight: bold; }
 
-        /* ADMIN PANEL */
-        #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; display: none; }
-        .admin-controls { display: flex; gap: 10px; margin-top: 10px; }
+        /* BOTONES EXTRA */
+        .history-btn { background: #2a475e; color: #66c0f4; border: 1px solid #47bfff; padding: 5px 10px; font-size: 0.8rem; margin-left: 5px;}
         .delete-btn { background: #c9302c; color: white; padding: 5px 10px; font-size: 0.8rem; }
 
-        /* SUMMARY BAR */
+        /* MODAL GRÁFICA */
+        #chart-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .chart-content { background: #1b2838; padding: 20px; border-radius: 8px; width: 90%; max-width: 800px; position: relative; }
+        .close-chart { position: absolute; top: 10px; right: 15px; color: white; font-size: 24px; cursor: pointer; }
+
+        /* ADMIN PANEL & SUMMARY */
+        #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; display: none; }
+        .admin-controls { display: flex; gap: 10px; margin-top: 10px; }
         .summary-bar { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #101216; padding: 15px; display: flex; justify-content: center; gap: 30px; border-top: 2px solid #66c0f4; font-size: 1.2rem; z-index: 100; }
     </style>
 </head>
 <body>
+
+    <div id="chart-modal">
+        <div class="chart-content">
+            <span class="close-chart" onclick="closeChart()">&times;</span>
+            <canvas id="skinChart"></canvas>
+        </div>
+    </div>
 
     <div id="auth-container">
         <div class="auth-box">
@@ -57,7 +69,7 @@
 
     <div id="app-container">
         <div class="top-bar">
-            <h1>INVENTARIO CS</h1>
+            <h1>Mi Cartera CS2</h1>
             <div>
                 <span id="user-email" style="margin-right: 15px; color: #8f98a0;"></span>
                 <button class="logout-btn" onclick="handleLogout()">Salir</button>
@@ -80,11 +92,12 @@
         <table class="inventory-table">
             <thead>
                 <tr>
-                    <th style="width: 35%">Skin</th>
+                    <th style="width: 30%">Skin</th>
                     <th>Cantidad</th>
                     <th>Compra Unit.</th>
                     <th>Precio Mercado</th>
                     <th>Beneficio</th>
+                    <th>Histórico</th>
                     <th class="admin-only" style="display:none;">Acción</th>
                 </tr>
             </thead>
@@ -101,9 +114,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // --- 1. PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ---
+        // CONFIGURACIÓN FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyDTrzjZAnrRhfWyJSBXnmPnc5cVMHhZPy0",
             authDomain: "calculadora2-a85c3.firebaseapp.com",
@@ -114,122 +127,84 @@
             measurementId: "G-WE2ER7DP5K"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Variables Globales
+        // Variables
         let currentUser = null;
-        let globalSkins = []; // Lista de skins cargada desde BD
-        let userData = {};    // Inventario del usuario
+        let globalSkins = [];
+        let userData = {};
+        let chartInstance = null; // Para destruir la gráfica anterior al abrir una nueva
 
-        // Email del Administrador (PON AQUÍ TU EMAIL PARA VER EL PANEL)
-        const ADMIN_EMAIL = "maksympavelko98@gmail.com"; 
+        // !!! CAMBIA ESTO POR TU EMAIL !!!
+        const ADMIN_EMAIL = "tu_email_admin@ejemplo.com"; 
 
-        // --- 2. GESTIÓN DE AUTENTICACIÓN ---
+        // ---------------- AUTH ----------------
         window.handleLogin = async () => {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+            try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
+            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
         };
-
         window.handleRegister = async () => {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            try {
-                await createUserWithEmailAndPassword(auth, email, pass);
-            } catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+            try { await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
+            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
         };
-
         window.handleLogout = () => signOut(auth);
 
-// Escuchar cambios de sesión
         onAuthStateChanged(auth, async (user) => {
+            const adminPanel = document.getElementById('admin-panel');
+            const adminColumns = document.querySelectorAll('.admin-only');
+
             if (user) {
                 currentUser = user;
                 document.getElementById('user-email').innerText = user.email;
                 document.getElementById('auth-container').classList.remove('active-view');
                 document.getElementById('app-container').classList.add('active-view');
                 
-                // --- CORRECCIÓN DE SEGURIDAD VISUAL ---
-                const adminPanel = document.getElementById('admin-panel');
-                const adminColumns = document.querySelectorAll('.admin-only');
-
                 if(user.email === ADMIN_EMAIL) {
-                    // SI ERES ADMIN: Mostramos todo
                     adminPanel.style.display = 'block';
                     adminColumns.forEach(el => el.style.display = 'table-cell');
                 } else {
-                    // SI NO ERES ADMIN: Ocultamos todo explícitamente
-                    // (Esto borra el rastro si antes entró un admin)
                     adminPanel.style.display = 'none';
                     adminColumns.forEach(el => el.style.display = 'none');
                 }
-                // --------------------------------------
-
                 await cargarDatosIniciales();
             } else {
                 currentUser = null;
                 document.getElementById('app-container').classList.remove('active-view');
                 document.getElementById('auth-container').classList.add('active-view');
-                
-                // Opcional: Limpiar la tabla al salir para que no se vea nada brevemente al volver a entrar
                 document.getElementById('inventory-body').innerHTML = '';
             }
         });
 
-        // --- 3. LÓGICA DE DATOS (BD) ---
-        
-        // Cargar skins globales y datos del usuario
+        // ---------------- DATA ----------------
         async function cargarDatosIniciales() {
-            // 1. Cargar lista de skins (Global)
             const querySnapshot = await getDocs(collection(db, "skins"));
             globalSkins = [];
-            querySnapshot.forEach((doc) => {
-                globalSkins.push({ id: doc.id, ...doc.data() });
-            });
+            querySnapshot.forEach((doc) => globalSkins.push({ id: doc.id, ...doc.data() }));
 
-            // 2. Cargar inventario del usuario (Personal)
             const userDocRef = doc(db, "users", currentUser.uid);
             const userSnap = await getDoc(userDocRef);
-            
-            if (userSnap.exists()) {
-                userData = userSnap.data().inventory || {};
-            } else {
-                userData = {}; // Usuario nuevo
-            }
+            userData = userSnap.exists() ? userSnap.data().inventory || {} : {};
 
             renderTable();
         }
 
-        // --- 4. RENDERIZADO DE TABLA ---
         function renderTable() {
             const tbody = document.getElementById('inventory-body');
             tbody.innerHTML = '';
+            const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
 
             globalSkins.forEach((skin, index) => {
                 const saved = userData[skin.hash] || { qty: 0, buyPrice: 0 };
-                const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
-
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>
-                        <strong>${skin.nombre}</strong><br>
-                        <span style="font-size:0.75rem; color:#8f98a0;">${skin.hash}</span>
-                    </td>
-                    <td>
-                        <input type="number" value="${saved.qty}" min="0" style="width:60px"
-                            onchange="window.saveInput('${skin.hash}', 'qty', this.value)">
-                    </td>
-                    <td>
-                        <input type="number" value="${saved.buyPrice}" step="0.01" min="0" style="width:70px"
-                            onchange="window.saveInput('${skin.hash}', 'buyPrice', this.value)">
-                    </td>
+                    <td><strong>${skin.nombre}</strong><br><span style="font-size:0.75rem; color:#8f98a0;">${skin.hash}</span></td>
+                    <td><input type="number" value="${saved.qty}" min="0" style="width:60px" onchange="window.saveInput('${skin.hash}', 'qty', this.value)"></td>
+                    <td><input type="number" value="${saved.buyPrice}" step="0.01" min="0" style="width:70px" onchange="window.saveInput('${skin.hash}', 'buyPrice', this.value)"></td>
                     <td id="price-${index}" class="market-price" data-hash="${skin.hash}">---</td>
                     <td id="profit-${index}">---</td>
+                    <td><button class="history-btn" onclick="window.showHistory('${skin.id}', '${skin.nombre}')">📈 Ver</button></td>
                     ${isAdmin ? `<td><button class="delete-btn" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>` : ''}
                 `;
                 tbody.appendChild(row);
@@ -237,106 +212,129 @@
             calcularTotales();
         }
 
-        // --- 5. GUARDAR DATOS DE USUARIO ---
         window.saveInput = async (hash, field, value) => {
             if (!userData[hash]) userData[hash] = { qty: 0, buyPrice: 0 };
             userData[hash][field] = parseFloat(value) || 0;
-
-            // Guardar en Firestore
-            try {
-                const userDocRef = doc(db, "users", currentUser.uid);
-                await setDoc(userDocRef, { inventory: userData }, { merge: true });
-                calcularTotales();
-            } catch (e) { console.error("Error guardando:", e); }
+            try { await setDoc(doc(db, "users", currentUser.uid), { inventory: userData }, { merge: true }); calcularTotales(); } catch (e) {}
         };
 
-        // --- 6. FUNCIONES DE ADMIN ---
         window.adminAddSkin = async () => {
             const nombre = document.getElementById('new-skin-name').value;
             const hash = document.getElementById('new-skin-hash').value;
-            
-            if(!nombre || !hash) return alert("Rellena ambos campos");
-
-            try {
+            if(nombre && hash) {
                 await addDoc(collection(db, "skins"), { nombre, hash });
                 document.getElementById('new-skin-name').value = '';
                 document.getElementById('new-skin-hash').value = '';
-                await cargarDatosIniciales(); // Recargar tabla
-            } catch (e) { alert("Error añadiendo skin: " + e.message); }
-        };
-
-        window.adminDeleteSkin = async (docId) => {
-            if(confirm("¿Seguro que quieres borrar esta skin para todos?")) {
-                try {
-                    await deleteDoc(doc(db, "skins", docId));
-                    await cargarDatosIniciales();
-                } catch(e) { alert("Error: " + e.message); }
+                await cargarDatosIniciales();
             }
         };
 
-        // --- 7. ACTUALIZAR PRECIOS (TU API VERCEL) ---
+        window.adminDeleteSkin = async (id) => {
+            if(confirm("¿Borrar skin?")) { await deleteDoc(doc(db, "skins", id)); await cargarDatosIniciales(); }
+        };
+
+        // ---------------- GRÁFICAS E HISTORIAL ----------------
+        window.showHistory = async (skinId, skinName) => {
+            document.getElementById('chart-modal').style.display = 'flex';
+            const ctx = document.getElementById('skinChart').getContext('2d');
+            
+            // Si ya hay una gráfica, destrúyela
+            if (chartInstance) chartInstance.destroy();
+
+            // Cargar datos de la subcolección 'history' de la skin
+            // Ordenados por fecha
+            const q = query(collection(db, "skins", skinId, "history"), orderBy("date", "asc"), limit(50));
+            const snapshot = await getDocs(q);
+            
+            const labels = [];
+            const dataPoints = [];
+
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                // Formatear fecha (ej: 31/01 18:00)
+                const dateObj = d.date.toDate ? d.date.toDate() : new Date(d.date);
+                const dateStr = `${dateObj.getDate()}/${dateObj.getMonth()+1} ${dateObj.getHours()}:00`;
+                
+                labels.push(dateStr);
+                dataPoints.push(d.price);
+            });
+
+            if(labels.length === 0) {
+                // Si no hay datos, mostrar algo vacío o placeholder
+                labels.push("Hoy");
+                dataPoints.push(0);
+            }
+
+            // Crear Gráfica
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Precio: ${skinName}`,
+                        data: dataPoints,
+                        borderColor: '#47bfff',
+                        backgroundColor: 'rgba(71, 191, 255, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: 'white' } } },
+                    scales: {
+                        y: { ticks: { color: '#8f98a0' }, grid: { color: '#2a475e' } },
+                        x: { ticks: { color: '#8f98a0' }, grid: { color: '#2a475e' } }
+                    }
+                }
+            });
+        };
+
+        window.closeChart = () => { document.getElementById('chart-modal').style.display = 'none'; };
+
+        // ---------------- PRECIOS LIVE ----------------
         window.actualizarPrecios = async () => {
             const pricesCells = document.querySelectorAll('.market-price');
-            pricesCells.forEach(cell => cell.innerHTML = '<span style="color:#f0ad4e">Cargando...</span>');
-
+            pricesCells.forEach(cell => cell.innerHTML = '<span style="color:#f0ad4e">...</span>');
             for (let i = 0; i < globalSkins.length; i++) {
                 const skin = globalSkins[i];
                 const celda = document.getElementById(`price-${i}`);
-                
                 try {
                     const res = await fetch(`/api/price?skin=${encodeURIComponent(skin.hash)}`);
                     const data = await res.json();
-                    
                     if (data.lowest_price) {
-                        let priceClean = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
-                        celda.dataset.price = priceClean;
-                        celda.innerText = `${priceClean.toFixed(2)}€`;
-                    } else {
-                        celda.innerText = "N/A";
-                    }
-                } catch (e) {
-                    celda.innerText = "Err";
-                }
+                        let p = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
+                        celda.dataset.price = p;
+                        celda.innerText = `${p.toFixed(2)}€`;
+                    } else celda.innerText = "N/A";
+                } catch (e) { celda.innerText = "Err"; }
             }
             calcularTotales();
         }
 
-        // --- 8. CÁLCULOS ---
         function calcularTotales() {
-            let totalInvested = 0;
-            let totalNetValue = 0;
-
+            let totalInvested = 0, totalNetValue = 0;
             globalSkins.forEach((skin, index) => {
                 const saved = userData[skin.hash] || { qty: 0, buyPrice: 0 };
-                const priceCell = document.getElementById(`price-${index}`);
-                const currentPrice = parseFloat(priceCell?.dataset?.price) || 0;
-
+                const currentPrice = parseFloat(document.getElementById(`price-${index}`)?.dataset?.price) || 0;
                 const invested = saved.qty * saved.buyPrice;
-                const revenueNet = (currentPrice * saved.qty) * 0.85; // Steam Fee
+                const revenueNet = (currentPrice * saved.qty) * 0.85;
                 const profit = revenueNet - invested;
-
                 totalInvested += invested;
                 if(currentPrice > 0) totalNetValue += revenueNet;
-
-                // Update row profit
-                const profitCell = document.getElementById(`profit-${index}`);
-                if(profitCell && currentPrice > 0) {
-                    profitCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
-                    profitCell.className = profit >= 0 ? 'profit-positive' : 'profit-negative';
+                const pCell = document.getElementById(`profit-${index}`);
+                if(pCell && currentPrice > 0) {
+                    pCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
+                    pCell.className = profit >= 0 ? 'profit-positive' : 'profit-negative';
                 }
             });
-
             document.getElementById('total-invested').innerText = `${totalInvested.toFixed(2)}€`;
             document.getElementById('total-value').innerText = `${totalNetValue.toFixed(2)}€`;
             const profitTotal = totalNetValue - totalInvested;
-            const totalSpan = document.getElementById('total-profit');
-            totalSpan.innerText = `${profitTotal > 0 ? '+' : ''}${profitTotal.toFixed(2)}€`;
-            totalSpan.style.color = profitTotal >= 0 ? '#4caf50' : '#f44336';
+            const tSpan = document.getElementById('total-profit');
+            tSpan.innerText = `${profitTotal > 0 ? '+' : ''}${profitTotal.toFixed(2)}€`;
+            tSpan.style.color = profitTotal >= 0 ? '#4caf50' : '#f44336';
         }
     </script>
 </body>
 </html>
-
-
-
-
