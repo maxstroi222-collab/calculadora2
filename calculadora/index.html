@@ -16,12 +16,7 @@
         /* 1. La clase .hidden tiene prioridad máxima */
         .hidden { display: none !important; }
 
-        /* 2. Por defecto, todo oculto para evitar parpadeos o solapamientos */
-        #auth-container, #app-container, #admin-panel { 
-            display: none; 
-        }
-
-        /* 3. Solo mostramos si tienen explícitamente la clase .visible */
+        /* 2. Clase .visible para mostrar elementos */
         .visible { display: block !important; }
 
         /* PANTALLA DE CARGA */
@@ -71,7 +66,7 @@
         </div>
     </div>
 
-    <div id="auth-container">
+    <div id="auth-container" class="visible">
         <div class="auth-box">
             <h2>Bienvenido</h2>
             <input type="email" id="email" placeholder="Correo electrónico">
@@ -82,7 +77,7 @@
         </div>
     </div>
 
-    <div id="app-container">
+    <div id="app-container" class="hidden">
         <div class="top-bar">
             <h1>Mi Cartera CS2</h1>
             <div>
@@ -91,7 +86,7 @@
             </div>
         </div>
 
-        <div id="admin-panel">
+        <div id="admin-panel" class="hidden">
             <h3>🛠 Panel Administrador</h3>
             <div class="admin-controls">
                 <input type="text" id="new-skin-name" placeholder="Nombre (ej: Revolution)">
@@ -163,6 +158,18 @@
         let chartInstance = null;
 
         // ---------------- AUTH ----------------
+        // Función helper para manejar visibilidad de forma segura
+        function setVisibility(element, visible) {
+            if (!element) return;
+            if (visible) {
+                element.classList.remove('hidden');
+                element.classList.add('visible');
+            } else {
+                element.classList.remove('visible');
+                element.classList.add('hidden');
+            }
+        }
+
         window.handleLogin = async () => {
             try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
             catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
@@ -191,19 +198,15 @@
                 try { document.getElementById('user-email').innerText = user.email; } catch(e){}
 
                 // 1. Mostrar App y Ocultar Login
-                appContainer.classList.add('visible');
-                appContainer.classList.remove('hidden');
-                authContainer.classList.remove('visible');
-                authContainer.classList.add('hidden');
+                setVisibility(authContainer, false);
+                setVisibility(appContainer, true);
 
                 // 2. Panel Admin
                 if(user.email === ADMIN_EMAIL) {
-                    adminPanel.classList.add('visible');
-                    adminPanel.classList.remove('hidden');
+                    setVisibility(adminPanel, true);
                     adminColumns.forEach(el => el.classList.remove('hidden'));
                 } else {
-                    adminPanel.classList.remove('visible');
-                    adminPanel.classList.add('hidden');
+                    setVisibility(adminPanel, false);
                     adminColumns.forEach(el => el.classList.add('hidden'));
                 }
 
@@ -214,10 +217,8 @@
                 currentUser = null;
                 
                 // 1. Mostrar Login y Ocultar App
-                authContainer.classList.add('visible');
-                authContainer.classList.remove('hidden');
-                appContainer.classList.remove('visible');
-                appContainer.classList.add('hidden');
+                setVisibility(appContainer, false);
+                setVisibility(authContainer, true);
             }
             
             // Quitar pantalla de carga
