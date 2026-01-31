@@ -10,6 +10,7 @@ if (!admin.apps.length) {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       // Reemplazamos los saltos de línea escapados (común en Vercel)
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      : undefined,
     }),
   });
 }
@@ -66,4 +67,5 @@ export default async function handler(req, res) {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
+
 }
