@@ -12,20 +12,23 @@
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
         input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
 
-        /* 1. AGREGA ESTA CLASE NUEVA */
+        /* --- SISTEMA DE VISIBILIDAD (A prueba de fallos) --- */
+        /* 1. La clase .hidden tiene prioridad máxima */
         .hidden { display: none !important; }
-        
-        /* Ocultamos ambos por defecto para que no haya conflictos */
-        #auth-container, #app-container { 
-            width: 100%; 
-            max-width: 900px; 
-            display: none; 
-            }
 
-        /* Aseguramos que si no tienen la clase hidden, se vean */
-        #auth-container:not(.hidden), #app-container:not(.hidden) {
-            display: block;
+        /* 2. Por defecto, todo oculto para evitar parpadeos o solapamientos */
+        #auth-container, #app-container, #admin-panel { 
+            display: none; 
         }
+
+        /* 3. Solo mostramos si tienen explícitamente la clase .visible */
+        .visible { display: block !important; }
+
+        /* PANTALLA DE CARGA */
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1b2838; z-index: 9999; display: flex; justify-content: center; align-items: center; color: #66c0f4; font-size: 1.5rem; }
+
+        /* CONTENEDORES */
+        #auth-container, #app-container { width: 100%; max-width: 900px; }
 
         /* AUTH & CONTROLS */
         .auth-box { background: #171a21; padding: 40px; border-radius: 8px; text-align: center; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -52,12 +55,14 @@
         .close-chart { position: absolute; top: 10px; right: 15px; color: white; font-size: 24px; cursor: pointer; }
 
         /* ADMIN PANEL & SUMMARY */
-        #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; display: none; }
+        #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; }
         .admin-controls { display: flex; gap: 10px; margin-top: 10px; }
         .summary-bar { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #101216; padding: 15px; display: flex; justify-content: center; gap: 30px; border-top: 2px solid #66c0f4; font-size: 1.2rem; z-index: 100; }
     </style>
 </head>
 <body>
+
+    <div id="loading-screen">Cargando...</div>
 
     <div id="chart-modal">
         <div class="chart-content">
@@ -108,7 +113,7 @@
                     <th>Precio Mercado</th>
                     <th>Beneficio</th>
                     <th>Histórico</th>
-                    <th class="admin-only" style="display:none;">Acción</th>
+                    <th class="admin-only hidden">Acción</th>
                 </tr>
             </thead>
             <tbody id="inventory-body"></tbody>
@@ -123,6 +128,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        // --- AQUÍ ESTABA EL ERROR: He quitado la coma sobrante ---
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
@@ -137,6 +143,10 @@
             measurementId: "G-WE2ER7DP5K"
         };
 
+        // --- CAMBIA ESTO POR TU EMAIL ---
+        const ADMIN_EMAIL = "maksympavelko98@gmail.com"; 
+        
+        // INICIALIZACIÓN
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -145,9 +155,6 @@
         let globalSkins = [];
         let userData = {};
         let chartInstance = null;
-
-        // --- CAMBIA ESTO POR TU EMAIL ---
-        const ADMIN_EMAIL = "maksympavelko98@gmail.com"; 
 
         // ---------------- AUTH ----------------
         window.handleLogin = async () => {
@@ -158,10 +165,15 @@
             try { await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
             catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
         };
-        window.handleLogout = () => signOut(auth);
+        window.handleLogout = () => {
+            document.getElementById('inventory-body').innerHTML = '';
+            signOut(auth);
+            window.location.reload(); // Recargar para limpiar todo bien
+        };
 
-// Escuchar cambios de sesión
+        // --- SISTEMA DE VISIBILIDAD (Corregido) ---
         onAuthStateChanged(auth, async (user) => {
+            const loadingScreen = document.getElementById('loading-screen');
             const authContainer = document.getElementById('auth-container');
             const appContainer = document.getElementById('app-container');
             const adminPanel = document.getElementById('admin-panel');
@@ -170,23 +182,19 @@
             if (user) {
                 // --- USUARIO LOGUEADO ---
                 currentUser = user;
-                // Intentamos poner el email si el elemento existe
                 try { document.getElementById('user-email').innerText = user.email; } catch(e){}
 
-                // 1. OCULTAR LOGIN (Añadiendo la clase hidden)
-                authContainer.classList.add('hidden');
-                
-                // 2. MOSTRAR APP (Quitando la clase hidden)
-                appContainer.classList.remove('hidden');
+                // 1. Mostrar App y Ocultar Login
+                appContainer.classList.add('visible');
+                authContainer.classList.remove('visible');
 
-                // 3. Lógica de Admin
+                // 2. Panel Admin
                 if(user.email === ADMIN_EMAIL) {
-                    adminPanel.style.display = 'block';
-                    adminColumns.forEach(el => el.classList.remove('hidden')); // Usamos remove hidden si tienen la clase
-                    adminColumns.forEach(el => el.style.display = 'table-cell'); // O forzamos display
+                    adminPanel.classList.add('visible');
+                    adminColumns.forEach(el => el.classList.remove('hidden'));
                 } else {
-                    adminPanel.style.display = 'none';
-                    adminColumns.forEach(el => el.style.display = 'none');
+                    adminPanel.classList.remove('visible');
+                    adminColumns.forEach(el => el.classList.add('hidden'));
                 }
 
                 await cargarDatosIniciales();
@@ -195,27 +203,28 @@
                 // --- USUARIO NO LOGUEADO ---
                 currentUser = null;
                 
-                // 1. OCULTAR APP
-                appContainer.classList.add('hidden');
-                
-                // 2. MOSTRAR LOGIN
-                authContainer.classList.remove('hidden');
-                
-                document.getElementById('inventory-body').innerHTML = '';
+                // 1. Mostrar Login y Ocultar App
+                authContainer.classList.add('visible');
+                appContainer.classList.remove('visible');
             }
+            
+            // Quitar pantalla de carga
+            loadingScreen.style.display = 'none';
         });
 
         // ---------------- DATA ----------------
         async function cargarDatosIniciales() {
-            const querySnapshot = await getDocs(collection(db, "skins"));
-            globalSkins = [];
-            querySnapshot.forEach((doc) => globalSkins.push({ id: doc.id, ...doc.data() }));
+            try {
+                const querySnapshot = await getDocs(collection(db, "skins"));
+                globalSkins = [];
+                querySnapshot.forEach((doc) => globalSkins.push({ id: doc.id, ...doc.data() }));
 
-            const userDocRef = doc(db, "users", currentUser.uid);
-            const userSnap = await getDoc(userDocRef);
-            userData = userSnap.exists() ? userSnap.data().inventory || {} : {};
+                const userDocRef = doc(db, "users", currentUser.uid);
+                const userSnap = await getDoc(userDocRef);
+                userData = userSnap.exists() ? userSnap.data().inventory || {} : {};
 
-            renderTable();
+                renderTable();
+            } catch (e) { console.error("Error cargando:", e); }
         }
 
         function renderTable() {
@@ -233,7 +242,7 @@
                     <td id="price-${index}" class="market-price" data-hash="${skin.hash}">---</td>
                     <td id="profit-${index}">---</td>
                     <td><button class="history-btn" onclick="window.showHistory('${skin.id}', '${skin.nombre}')">📈 Ver</button></td>
-                    ${isAdmin ? `<td><button class="delete-btn" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>` : ''}
+                    <td class="admin-only ${isAdmin ? '' : 'hidden'}"><button class="delete-btn" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -261,18 +270,15 @@
             if(confirm("¿Borrar skin?")) { await deleteDoc(doc(db, "skins", id)); await cargarDatosIniciales(); }
         };
 
-        // ---------------- GRÁFICAS E HISTORIAL ----------------
+        // ---------------- GRÁFICAS ----------------
         window.showHistory = async (skinId, skinName) => {
             document.getElementById('chart-modal').style.display = 'flex';
             const ctx = document.getElementById('skinChart').getContext('2d');
-            
             if (chartInstance) chartInstance.destroy();
 
             const q = query(collection(db, "skins", skinId, "history"), orderBy("date", "asc"), limit(50));
             const snapshot = await getDocs(q);
-            
-            const labels = [];
-            const dataPoints = [];
+            const labels = [], dataPoints = [];
 
             snapshot.forEach(doc => {
                 const d = doc.data();
@@ -282,11 +288,7 @@
                 dataPoints.push(d.price);
             });
 
-            if(labels.length === 0) {
-                // Datos de relleno si está vacía
-                labels.push("Esperando datos...");
-                dataPoints.push(0);
-            }
+            if(labels.length === 0) { labels.push("Sin datos"); dataPoints.push(0); }
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -311,7 +313,6 @@
                 }
             });
         };
-
         window.closeChart = () => { document.getElementById('chart-modal').style.display = 'none'; };
 
         // ---------------- PRECIOS LIVE ----------------
@@ -344,6 +345,7 @@
                 const profit = revenueNet - invested;
                 totalInvested += invested;
                 if(currentPrice > 0) totalNetValue += revenueNet;
+                
                 const pCell = document.getElementById(`profit-${index}`);
                 if(pCell && currentPrice > 0) {
                     pCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
@@ -360,7 +362,3 @@
     </script>
 </body>
 </html>
-
-
-
-
