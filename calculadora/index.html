@@ -12,13 +12,14 @@
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
         input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
 
-        /* --- SISTEMA DE VISIBILIDAD (A prueba de fallos) --- */
-        /* 1. La clase .hidden tiene prioridad máxima */
-        .hidden { display: none !important; }
+        /* --- SISTEMA DE VISIBILIDAD --- */
+        #auth-container, #app-container { 
+            display: none; /* Ocultos por defecto */
+        }
 
-        /* 2. Por defecto, todo oculto para evitar parpadeos o solapamientos */
-        #auth-container, #app-container, #admin-panel { 
-            display: none; 
+        /* Solo se muestra el que tenga la clase .active */
+        .active { 
+            display: block !important; 
         }
 
         /* 3. Solo mostramos si tienen explícitamente la clase .visible */
@@ -177,46 +178,44 @@
             window.location.reload(); // Recargar para limpiar todo bien
         };
 
-        // --- SISTEMA DE VISIBILIDAD (Corregido) ---
-        onAuthStateChanged(auth, async (user) => {
-            const loadingScreen = document.getElementById('loading-screen');
-            const authContainer = document.getElementById('auth-container');
-            const appContainer = document.getElementById('app-container');
-            const adminPanel = document.getElementById('admin-panel');
-            const adminColumns = document.querySelectorAll('.admin-only');
+onAuthStateChanged(auth, async (user) => {
+    const loadingScreen = document.getElementById('loading-screen');
+    const authContainer = document.getElementById('auth-container');
+    const appContainer = document.getElementById('app-container');
+    const adminPanel = document.getElementById('admin-panel');
+    const adminColumns = document.querySelectorAll('.admin-only');
 
-            if (user) {
-                // --- USUARIO LOGUEADO ---
-                currentUser = user;
-                try { document.getElementById('user-email').innerText = user.email; } catch(e){}
+    // Ocultar pantalla de carga inmediatamente
+    loadingScreen.style.display = 'none';
 
-                // 1. Mostrar App y Ocultar Login
-                appContainer.classList.add('visible');
-                authContainer.classList.remove('visible');
+    if (user) {
+        // --- USUARIO LOGUEADO ---
+        currentUser = user;
+        try { document.getElementById('user-email').innerText = user.email; } catch(e){}
 
-                // 2. Panel Admin
-                if(user.email === ADMIN_EMAIL) {
-                    adminPanel.classList.add('visible');
-                    adminColumns.forEach(el => el.classList.remove('hidden'));
-                } else {
-                    adminPanel.classList.remove('visible');
-                    adminColumns.forEach(el => el.classList.add('hidden'));
-                }
+        // Switch de pantallas
+        authContainer.classList.remove('active');
+        appContainer.classList.add('active');
 
-                await cargarDatosIniciales();
+        // Lógica de Admin
+        if(user.email === ADMIN_EMAIL) {
+            adminPanel.classList.add('active'); // Usamos active también aquí
+            adminColumns.forEach(el => el.classList.remove('hidden'));
+        } else {
+            adminPanel.classList.remove('active');
+            adminColumns.forEach(el => el.classList.add('hidden'));
+        }
 
-            } else {
-                // --- USUARIO NO LOGUEADO ---
-                currentUser = null;
-                
-                // 1. Mostrar Login y Ocultar App
-                authContainer.classList.add('visible');
-                appContainer.classList.remove('visible');
-            }
-            
-            // Quitar pantalla de carga
-            loadingScreen.style.display = 'none';
-        });
+        await cargarDatosIniciales();
+    } else {
+        // --- USUARIO NO LOGUEADO ---
+        currentUser = null;
+        
+        // Switch de pantallas
+        appContainer.classList.remove('active');
+        authContainer.classList.add('active');
+    }
+});
 
         // ---------------- DATA ----------------
         async function cargarDatosIniciales() {
@@ -368,4 +367,5 @@
     </script>
 </body>
 </html>
+
 
