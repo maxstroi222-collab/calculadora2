@@ -146,7 +146,7 @@
 
         window.handleLogout = () => signOut(auth);
 
-        // Escuchar cambios de sesión
+// Escuchar cambios de sesión
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -154,17 +154,30 @@
                 document.getElementById('auth-container').classList.remove('active-view');
                 document.getElementById('app-container').classList.add('active-view');
                 
-                // Mostrar panel admin si corresponde
+                // --- CORRECCIÓN DE SEGURIDAD VISUAL ---
+                const adminPanel = document.getElementById('admin-panel');
+                const adminColumns = document.querySelectorAll('.admin-only');
+
                 if(user.email === ADMIN_EMAIL) {
-                    document.getElementById('admin-panel').style.display = 'block';
-                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'table-cell');
+                    // SI ERES ADMIN: Mostramos todo
+                    adminPanel.style.display = 'block';
+                    adminColumns.forEach(el => el.style.display = 'table-cell');
+                } else {
+                    // SI NO ERES ADMIN: Ocultamos todo explícitamente
+                    // (Esto borra el rastro si antes entró un admin)
+                    adminPanel.style.display = 'none';
+                    adminColumns.forEach(el => el.style.display = 'none');
                 }
+                // --------------------------------------
 
                 await cargarDatosIniciales();
             } else {
                 currentUser = null;
                 document.getElementById('app-container').classList.remove('active-view');
                 document.getElementById('auth-container').classList.add('active-view');
+                
+                // Opcional: Limpiar la tabla al salir para que no se vea nada brevemente al volver a entrar
+                document.getElementById('inventory-body').innerHTML = '';
             }
         });
 
@@ -323,5 +336,6 @@
     </script>
 </body>
 </html>
+
 
 
