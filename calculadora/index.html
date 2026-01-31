@@ -3,260 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Inventario CS2</title>
+    <title>CS2 Skin Tracker PRO</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1b2838;
-            color: #c7d5e0;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        /* ESTILOS GENERALES */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1b2838; color: #c7d5e0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         h1 { color: #66c0f4; }
+        button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
+        input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
+
+        /* VISTAS (LOGIN VS APP) */
+        #auth-container, #app-container { width: 100%; max-width: 900px; display: none; }
+        .active-view { display: block !important; }
+
+        /* AUTH STYLES */
+        .auth-box { background: #171a21; padding: 40px; border-radius: 8px; text-align: center; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .auth-box input { width: 90%; margin-bottom: 15px; display: block; margin: 10px auto; }
+        .auth-btn { background: linear-gradient(90deg, #47bfff 0%, #1a9fff 100%); color: white; width: 100%; }
+
+        /* APP CONTROLS */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .refresh-btn { background: #4caf50; color: white; }
+        .logout-btn { background: #d9534f; color: white; font-size: 0.8rem; }
+
+        /* TABLA */
+        .inventory-table { width: 100%; border-collapse: collapse; background-color: #171a21; border-radius: 8px; overflow: hidden; margin-bottom: 100px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a475e; }
+        th { background-color: #2a475e; color: #66c0f4; }
         
-        .controls {
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        button.refresh-btn {
-            background: linear-gradient(90deg, #47bfff 0%, #1a9fff 100%);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-        button.refresh-btn:hover { opacity: 0.9; }
-
-        .inventory-table {
-            width: 100%;
-            max-width: 900px;
-            border-collapse: collapse;
-            background-color: #171a21;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #2a475e;
-        }
-
-        th {
-            background-color: #2a475e;
-            color: #66c0f4;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-
-        /* Inputs dentro de la tabla */
-        input {
-            background-color: #0d1015;
-            border: 1px solid #4a6680;
-            color: white;
-            padding: 8px;
-            width: 80px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        input:focus { outline: none; border-color: #66c0f4; }
-
         .profit-positive { color: #4caf50; font-weight: bold; }
         .profit-negative { color: #f44336; font-weight: bold; }
-        .loading-text { color: #f0ad4e; font-size: 0.9rem; }
 
-        .summary-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #101216;
-            padding: 15px;
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            border-top: 2px solid #66c0f4;
-            font-size: 1.2rem;
-        }
+        /* ADMIN PANEL */
+        #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; display: none; }
+        .admin-controls { display: flex; gap: 10px; margin-top: 10px; }
+        .delete-btn { background: #c9302c; color: white; padding: 5px 10px; font-size: 0.8rem; }
+
+        /* SUMMARY BAR */
+        .summary-bar { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #101216; padding: 15px; display: flex; justify-content: center; gap: 30px; border-top: 2px solid #66c0f4; font-size: 1.2rem; z-index: 100; }
     </style>
 </head>
 <body>
 
-    <h1>Mi Cartera de Skins</h1>
-
-    <div class="controls">
-        <button class="refresh-btn" onclick="actualizarPrecios()">🔄 Actualizar Precios Mercado</button>
+    <div id="auth-container">
+        <div class="auth-box">
+            <h2>Bienvenido</h2>
+            <input type="email" id="email" placeholder="Correo electrónico">
+            <input type="password" id="password" placeholder="Contraseña">
+            <button class="auth-btn" onclick="handleLogin()">Iniciar Sesión</button>
+            <button class="auth-btn" style="background: transparent; border: 1px solid #47bfff; margin-top: 10px;" onclick="handleRegister()">Registrarse</button>
+            <p id="auth-msg" style="color: #f44336; margin-top: 10px;"></p>
+        </div>
     </div>
 
-    <table class="inventory-table">
-        <thead>
-            <tr>
-                <th style="width: 30%">Skin</th>
-                <th>Cantidad</th>
-                <th>Compra Unit. (€)</th>
-                <th>Precio Mercado</th>
-                <th>Beneficio Total</th>
-            </tr>
-        </thead>
-        <tbody id="inventory-body">
-            </tbody>
-    </table>
+    <div id="app-container">
+        <div class="top-bar">
+            <h1>Mi Cartera CS2</h1>
+            <div>
+                <span id="user-email" style="margin-right: 15px; color: #8f98a0;"></span>
+                <button class="logout-btn" onclick="handleLogout()">Salir</button>
+            </div>
+        </div>
 
-    <div style="height: 80px;"></div> <div class="summary-bar">
-        <div>Inversión: <span id="total-invested">0.00€</span></div>
-        <div>Valor Actual (Neto): <span id="total-value">0.00€</span></div>
-        <div>Profit Total: <span id="total-profit">0.00€</span></div>
+        <div id="admin-panel">
+            <h3>🛠 Panel Administrador</h3>
+            <div class="admin-controls">
+                <input type="text" id="new-skin-name" placeholder="Nombre (ej: Revolution)">
+                <input type="text" id="new-skin-hash" placeholder="Market Hash (ej: Revolution Case)">
+                <button onclick="adminAddSkin()" style="background: #f0ad4e; color: black;">+ Añadir Skin Global</button>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button class="refresh-btn" onclick="actualizarPrecios()">🔄 Actualizar Mercado</button>
+        </div>
+
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th style="width: 35%">Skin</th>
+                    <th>Cantidad</th>
+                    <th>Compra Unit.</th>
+                    <th>Precio Mercado</th>
+                    <th>Beneficio</th>
+                    <th class="admin-only" style="display:none;">Acción</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-body"></tbody>
+        </table>
+
+        <div class="summary-bar">
+            <div>Inv: <span id="total-invested">0.00€</span></div>
+            <div>Valor: <span id="total-value">0.00€</span></div>
+            <div>Profit: <span id="total-profit">0.00€</span></div>
+        </div>
     </div>
 
-<script>
-    // --- 1. CONFIGURACIÓN: AÑADE AQUÍ TUS SKINS ---
-    // Debes poner el nombre exacto de mercado (Market Hash Name)
-    const misSkins = [
-        { nombre: "Dreams and Nightmares", hash: "Dreams & Nightmares Case" },
-        { nombre: "Fracture", hash: "Fracture Case" },
-        { nombre: "Revolution", hash: "Revolution Case" },
-        { nombre: "Snakebite", hash: "Snakebite Case" }
-    ];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    // Cargar datos guardados al iniciar
-    const savedData = JSON.parse(localStorage.getItem('cs_inventory_data')) || {};
+        // --- 1. PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTrzjZAnrRhfWyJSBXnmPnc5cVMHhZPy0",
+            authDomain: "calculadora2-a85c3.firebaseapp.com",
+            projectId: "calculadora2-a85c3",
+            storageBucket: "calculadora2-a85c3.firebasestorage.app",
+            messagingSenderId: "1031799067800",
+            appId: "1:1031799067800:web:2dbe67122cccf855e76ced"
+            measurementId: "G-WE2ER7DP5K"
+        };
 
-    const tableBody = document.getElementById('inventory-body');
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    // --- 2. GENERAR TABLA INICIAL ---
-    function initTable() {
-        tableBody.innerHTML = '';
-        
-        misSkins.forEach((skin, index) => {
-            // Recuperar datos guardados o poner 0 por defecto
-            const saved = savedData[skin.hash] || { qty: 0, buyPrice: 0 };
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <strong>${skin.nombre}</strong><br>
-                    <span style="font-size:0.75rem; color:#8f98a0;">${skin.hash}</span>
-                </td>
-                <td>
-                    <input type="number" value="${saved.qty}" min="0" 
-                        onchange="saveInput('${skin.hash}', 'qty', this.value)">
-                </td>
-                <td>
-                    <input type="number" value="${saved.buyPrice}" step="0.01" min="0" 
-                        onchange="saveInput('${skin.hash}', 'buyPrice', this.value)">
-                </td>
-                <td id="price-${index}" class="market-price">---</td>
-                <td id="profit-${index}">---</td>
-            `;
-            tableBody.appendChild(row);
-        });
-        
-        calcularTotales(); // Calcular con los datos que ya tenemos guardados (aunque falte precio mercado)
-    }
+        // Variables Globales
+        let currentUser = null;
+        let globalSkins = []; // Lista de skins cargada desde BD
+        let userData = {};    // Inventario del usuario
 
-    // --- 3. GUARDAR DATOS (LocalStorage) ---
-    function saveInput(hash, field, value) {
-        if (!savedData[hash]) savedData[hash] = {};
-        savedData[hash][field] = parseFloat(value) || 0;
-        
-        localStorage.setItem('cs_inventory_data', JSON.stringify(savedData));
-        calcularTotales(); // Recalcular al cambiar inputs
-    }
+        // Email del Administrador (PON AQUÍ TU EMAIL PARA VER EL PANEL)
+        const ADMIN_EMAIL = "tu_email@ejemplo.com"; 
 
-// --- 4. LLAMAR A LA API (Actualizar precios) ---
-    async function actualizarPrecios() {
-        // Poner estado de carga visual
-        misSkins.forEach((_, index) => {
-            const celda = document.getElementById(`price-${index}`);
-            if(celda) celda.innerHTML = '<span class="loading-text">Cargando...</span>';
-        });
-
-        // Recorremos las skins y pedimos precio
-        // CORRECCIÓN: Ahora usamos 'i' consistentemente
-        for (let i = 0; i < misSkins.length; i++) {
-            const skin = misSkins[i];
+        // --- 2. GESTIÓN DE AUTENTICACIÓN ---
+        window.handleLogin = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
             try {
-                // Llamada a TU backend en Vercel
-                const res = await fetch(`/api/price?skin=${encodeURIComponent(skin.hash)}`);
-                const data = await res.json();
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+        };
+
+        window.handleRegister = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+            } catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        // Escuchar cambios de sesión
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-email').innerText = user.email;
+                document.getElementById('auth-container').classList.remove('active-view');
+                document.getElementById('app-container').classList.add('active-view');
                 
-                const celdaPrecio = document.getElementById(`price-${i}`); // Aquí usamos 'i'
-                
-                if (data.lowest_price) {
-                    // Limpiar el precio (quitar € o $ y convertir a número)
-                    let priceClean = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
-                    
-                    // Guardamos el precio actual
-                    celdaPrecio.dataset.price = priceClean;
-                    celdaPrecio.innerText = `${priceClean.toFixed(2)}€`;
-                } else {
-                    celdaPrecio.innerText = "Error";
+                // Mostrar panel admin si corresponde
+                if(user.email === ADMIN_EMAIL) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'table-cell');
                 }
-            } catch (e) {
-                console.error(e);
-                // Si falla, mostramos error en la celda correcta usando 'i'
-                document.getElementById(`price-${i}`).innerText = "Falló";
-            }
-        }
-        calcularTotales();
-    }
 
-    // --- 5. CÁLCULOS MATEMÁTICOS ---
-    function calcularTotales() {
-        let totalInvested = 0;
-        let totalNetValue = 0;
-
-        misSkins.forEach((skin, index) => {
-            const saved = savedData[skin.hash] || { qty: 0, buyPrice: 0 };
-            const currentPriceCell = document.getElementById(`price-${index}`);
-            const profitCell = document.getElementById(`profit-${index}`);
-            
-            // Si aun no hemos descargado el precio, usamos 0 para calcular (o el último conocido si quisieras mejorarlo)
-            const currentPrice = parseFloat(currentPriceCell.dataset.price) || 0;
-
-            const invested = saved.qty * saved.buyPrice;
-            
-            // Steam Fee: 15% (recibes el 0.85)
-            const revenueNet = (currentPrice * saved.qty) * 0.85;
-            const profit = revenueNet - invested;
-
-            // Totales globales
-            totalInvested += invested;
-            if (currentPrice > 0) totalNetValue += revenueNet;
-
-            // Actualizar celda de beneficio individual
-            if (currentPrice > 0) {
-                profitCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
-                profitCell.className = profit > 0 ? 'profit-positive' : 'profit-negative';
+                await cargarDatosIniciales();
+            } else {
+                currentUser = null;
+                document.getElementById('app-container').classList.remove('active-view');
+                document.getElementById('auth-container').classList.add('active-view');
             }
         });
 
-        // Actualizar barra inferior
-        document.getElementById('total-invested').innerText = `${totalInvested.toFixed(2)}€`;
-        document.getElementById('total-value').innerText = `${totalNetValue.toFixed(2)}€`;
+        // --- 3. LÓGICA DE DATOS (BD) ---
         
-        const totalProfit = totalNetValue - totalInvested;
-        const totalSpan = document.getElementById('total-profit');
-        totalSpan.innerText = `${totalProfit > 0 ? '+' : ''}${totalProfit.toFixed(2)}€`;
-        totalSpan.style.color = totalProfit >= 0 ? '#4caf50' : '#f44336';
-    }
+        // Cargar skins globales y datos del usuario
+        async function cargarDatosIniciales() {
+            // 1. Cargar lista de skins (Global)
+            const querySnapshot = await getDocs(collection(db, "skins"));
+            globalSkins = [];
+            querySnapshot.forEach((doc) => {
+                globalSkins.push({ id: doc.id, ...doc.data() });
+            });
 
-    // Iniciar la tabla al cargar la página
-    initTable();
-</script>
+            // 2. Cargar inventario del usuario (Personal)
+            const userDocRef = doc(db, "users", currentUser.uid);
+            const userSnap = await getDoc(userDocRef);
+            
+            if (userSnap.exists()) {
+                userData = userSnap.data().inventory || {};
+            } else {
+                userData = {}; // Usuario nuevo
+            }
 
+            renderTable();
+        }
+
+        // --- 4. RENDERIZADO DE TABLA ---
+        function renderTable() {
+            const tbody = document.getElementById('inventory-body');
+            tbody.innerHTML = '';
+
+            globalSkins.forEach((skin, index) => {
+                const saved = userData[skin.hash] || { qty: 0, buyPrice: 0 };
+                const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${skin.nombre}</strong><br>
+                        <span style="font-size:0.75rem; color:#8f98a0;">${skin.hash}</span>
+                    </td>
+                    <td>
+                        <input type="number" value="${saved.qty}" min="0" style="width:60px"
+                            onchange="window.saveInput('${skin.hash}', 'qty', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" value="${saved.buyPrice}" step="0.01" min="0" style="width:70px"
+                            onchange="window.saveInput('${skin.hash}', 'buyPrice', this.value)">
+                    </td>
+                    <td id="price-${index}" class="market-price" data-hash="${skin.hash}">---</td>
+                    <td id="profit-${index}">---</td>
+                    ${isAdmin ? `<td><button class="delete-btn" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>` : ''}
+                `;
+                tbody.appendChild(row);
+            });
+            calcularTotales();
+        }
+
+        // --- 5. GUARDAR DATOS DE USUARIO ---
+        window.saveInput = async (hash, field, value) => {
+            if (!userData[hash]) userData[hash] = { qty: 0, buyPrice: 0 };
+            userData[hash][field] = parseFloat(value) || 0;
+
+            // Guardar en Firestore
+            try {
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await setDoc(userDocRef, { inventory: userData }, { merge: true });
+                calcularTotales();
+            } catch (e) { console.error("Error guardando:", e); }
+        };
+
+        // --- 6. FUNCIONES DE ADMIN ---
+        window.adminAddSkin = async () => {
+            const nombre = document.getElementById('new-skin-name').value;
+            const hash = document.getElementById('new-skin-hash').value;
+            
+            if(!nombre || !hash) return alert("Rellena ambos campos");
+
+            try {
+                await addDoc(collection(db, "skins"), { nombre, hash });
+                document.getElementById('new-skin-name').value = '';
+                document.getElementById('new-skin-hash').value = '';
+                await cargarDatosIniciales(); // Recargar tabla
+            } catch (e) { alert("Error añadiendo skin: " + e.message); }
+        };
+
+        window.adminDeleteSkin = async (docId) => {
+            if(confirm("¿Seguro que quieres borrar esta skin para todos?")) {
+                try {
+                    await deleteDoc(doc(db, "skins", docId));
+                    await cargarDatosIniciales();
+                } catch(e) { alert("Error: " + e.message); }
+            }
+        };
+
+        // --- 7. ACTUALIZAR PRECIOS (TU API VERCEL) ---
+        window.actualizarPrecios = async () => {
+            const pricesCells = document.querySelectorAll('.market-price');
+            pricesCells.forEach(cell => cell.innerHTML = '<span style="color:#f0ad4e">Cargando...</span>');
+
+            for (let i = 0; i < globalSkins.length; i++) {
+                const skin = globalSkins[i];
+                const celda = document.getElementById(`price-${i}`);
+                
+                try {
+                    const res = await fetch(`/api/price?skin=${encodeURIComponent(skin.hash)}`);
+                    const data = await res.json();
+                    
+                    if (data.lowest_price) {
+                        let priceClean = parseFloat(data.lowest_price.replace(/[^\d,.-]/g, '').replace(',','.'));
+                        celda.dataset.price = priceClean;
+                        celda.innerText = `${priceClean.toFixed(2)}€`;
+                    } else {
+                        celda.innerText = "N/A";
+                    }
+                } catch (e) {
+                    celda.innerText = "Err";
+                }
+            }
+            calcularTotales();
+        }
+
+        // --- 8. CÁLCULOS ---
+        function calcularTotales() {
+            let totalInvested = 0;
+            let totalNetValue = 0;
+
+            globalSkins.forEach((skin, index) => {
+                const saved = userData[skin.hash] || { qty: 0, buyPrice: 0 };
+                const priceCell = document.getElementById(`price-${index}`);
+                const currentPrice = parseFloat(priceCell?.dataset?.price) || 0;
+
+                const invested = saved.qty * saved.buyPrice;
+                const revenueNet = (currentPrice * saved.qty) * 0.85; // Steam Fee
+                const profit = revenueNet - invested;
+
+                totalInvested += invested;
+                if(currentPrice > 0) totalNetValue += revenueNet;
+
+                // Update row profit
+                const profitCell = document.getElementById(`profit-${index}`);
+                if(profitCell && currentPrice > 0) {
+                    profitCell.innerText = `${profit > 0 ? '+' : ''}${profit.toFixed(2)}€`;
+                    profitCell.className = profit >= 0 ? 'profit-positive' : 'profit-negative';
+                }
+            });
+
+            document.getElementById('total-invested').innerText = `${totalInvested.toFixed(2)}€`;
+            document.getElementById('total-value').innerText = `${totalNetValue.toFixed(2)}€`;
+            const profitTotal = totalNetValue - totalInvested;
+            const totalSpan = document.getElementById('total-profit');
+            totalSpan.innerText = `${profitTotal > 0 ? '+' : ''}${profitTotal.toFixed(2)}€`;
+            totalSpan.style.color = profitTotal >= 0 ? '#4caf50' : '#f44336';
+        }
+    </script>
 </body>
 </html>
-
-
