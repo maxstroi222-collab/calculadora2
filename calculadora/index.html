@@ -12,10 +12,9 @@
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
         input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
 
-        /* VISTAS */
+        /* VISTAS: Login visible por defecto */
         #auth-container { width: 100%; max-width: 900px; display: block; }
         #app-container { width: 100%; max-width: 900px; display: none; }
-        .active-view { display: block !important; }
 
         /* AUTH & CONTROLS */
         .auth-box { background: #171a21; padding: 40px; border-radius: 8px; text-align: center; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -116,29 +115,28 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // CONFIGURACIÓN FIREBASE
+        // --- 1. PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ---
         const firebaseConfig = {
-            apiKey: "AIzaSyDTrzjZAnrRhfWyJSBXnmPnc5cVMHhZPy0",
-            authDomain: "calculadora2-a85c3.firebaseapp.com",
-            projectId: "calculadora2-a85c3",
-            storageBucket: "calculadora2-a85c3.firebasestorage.app",
-            messagingSenderId: "1031799067800",
-            appId: "1:1031799067800:web:2dbe67122cccf855e76ced",
-            measurementId: "G-WE2ER7DP5K"
+            apiKey: "TU_API_KEY_AQUI",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO_ID",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "NUMEROS...",
+            appId: "1:NUMEROS...",
+            measurementId: "G-XXXXXX"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Variables
         let currentUser = null;
         let globalSkins = [];
         let userData = {};
-        let chartInstance = null; // Para destruir la gráfica anterior al abrir una nueva
+        let chartInstance = null;
 
-        // !!! CAMBIA ESTO POR TU EMAIL !!!
-        const ADMIN_EMAIL = "maksympavelko98@gmail.com"; 
+        // --- CAMBIA ESTO POR TU EMAIL ---
+        const ADMIN_EMAIL = "tu_email_admin@ejemplo.com"; 
 
         // ---------------- AUTH ----------------
         window.handleLogin = async () => {
@@ -151,16 +149,23 @@
         };
         window.handleLogout = () => signOut(auth);
 
+        // --- CORRECCIÓN DE VISIBILIDAD DE VISTAS ---
         onAuthStateChanged(auth, async (user) => {
+            const authContainer = document.getElementById('auth-container');
+            const appContainer = document.getElementById('app-container');
             const adminPanel = document.getElementById('admin-panel');
             const adminColumns = document.querySelectorAll('.admin-only');
 
             if (user) {
+                // 1. USUARIO CONECTADO
                 currentUser = user;
                 document.getElementById('user-email').innerText = user.email;
-                document.getElementById('auth-container').classList.remove('active-view');
-                document.getElementById('app-container').classList.add('active-view');
+
+                // Ocultamos login y mostramos App a la fuerza
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'block';
                 
+                // Lógica de Admin
                 if(user.email === ADMIN_EMAIL) {
                     adminPanel.style.display = 'block';
                     adminColumns.forEach(el => el.style.display = 'table-cell');
@@ -168,11 +173,16 @@
                     adminPanel.style.display = 'none';
                     adminColumns.forEach(el => el.style.display = 'none');
                 }
+
                 await cargarDatosIniciales();
             } else {
+                // 2. USUARIO DESCONECTADO
                 currentUser = null;
-                document.getElementById('app-container').classList.remove('active-view');
-                document.getElementById('auth-container').classList.add('active-view');
+                
+                // Ocultamos App y mostramos Login a la fuerza
+                appContainer.style.display = 'none';
+                authContainer.style.display = 'block';
+                
                 document.getElementById('inventory-body').innerHTML = '';
             }
         });
@@ -238,11 +248,8 @@
             document.getElementById('chart-modal').style.display = 'flex';
             const ctx = document.getElementById('skinChart').getContext('2d');
             
-            // Si ya hay una gráfica, destrúyela
             if (chartInstance) chartInstance.destroy();
 
-            // Cargar datos de la subcolección 'history' de la skin
-            // Ordenados por fecha
             const q = query(collection(db, "skins", skinId, "history"), orderBy("date", "asc"), limit(50));
             const snapshot = await getDocs(q);
             
@@ -251,21 +258,18 @@
 
             snapshot.forEach(doc => {
                 const d = doc.data();
-                // Formatear fecha (ej: 31/01 18:00)
                 const dateObj = d.date.toDate ? d.date.toDate() : new Date(d.date);
                 const dateStr = `${dateObj.getDate()}/${dateObj.getMonth()+1} ${dateObj.getHours()}:00`;
-                
                 labels.push(dateStr);
                 dataPoints.push(d.price);
             });
 
             if(labels.length === 0) {
-                // Si no hay datos, mostrar algo vacío o placeholder
-                labels.push("Hoy");
+                // Datos de relleno si está vacía
+                labels.push("Esperando datos...");
                 dataPoints.push(0);
             }
 
-            // Crear Gráfica
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -338,4 +342,3 @@
     </script>
 </body>
 </html>
-
