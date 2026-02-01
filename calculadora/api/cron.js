@@ -1,16 +1,13 @@
 // api/cron.js
 const admin = require("firebase-admin");
 
-// Inicializar Firebase Admin (Servidor)
-// Usamos variables de entorno para no exponer las claves
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Reemplazamos los saltos de línea escapados (común en Vercel)
+      // Aquí estaba el error. Usamos la clave privada limpia.
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      : undefined,
     }),
   });
 }
@@ -69,3 +66,4 @@ export default async function handler(req, res) {
   }
 
 }
+
