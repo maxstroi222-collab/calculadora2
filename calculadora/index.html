@@ -38,6 +38,21 @@
         .refresh-btn { background: #4caf50; color: white; }
         .logout-btn { background: #d9534f; color: white; font-size: 0.8rem; }
 
+        /* Efecto de texto Admin Arcoiris */
+        .admin-rainbow {
+            font-weight: bold;
+            background: linear-gradient(to right, #ff2400, #e81d1d, #e8b71d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-animation 3s linear infinite;
+        }
+
+        @keyframes rainbow-animation {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
         /* TABLA E INVENTARIO */
         .inventory-table { width: 100%; border-collapse: collapse; background-color: #171a21; border-radius: 8px; overflow: hidden; margin-bottom: 100px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a475e; }
@@ -353,4 +368,5 @@
     </script>
 </body>
 </html>
+
 
