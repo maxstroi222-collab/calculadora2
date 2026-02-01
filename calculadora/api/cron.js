@@ -6,9 +6,8 @@ if (!admin.apps.length) {
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Aquí estaba el error. Usamos la clave privada limpia.
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    }),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    })
   });
 }
 
@@ -66,4 +65,5 @@ export default async function handler(req, res) {
   }
 
 }
+
 
