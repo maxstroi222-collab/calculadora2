@@ -12,20 +12,25 @@
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; font-weight: bold; }
         input { background-color: #0d1015; border: 1px solid #4a6680; color: white; padding: 8px; border-radius: 4px; }
 
-        /* --- SISTEMA DE VISIBILIDAD (A prueba de fallos) --- */
-        /* 1. La clase .hidden tiene prioridad máxima */
-        .hidden { display: none !important; }
+        /* --- NUEVO SISTEMA DE VISIBILIDAD --- */
+        /* Por defecto, ambos contenedores están ocultos */
+        #auth-container, #app-container { 
+            display: none; 
+            width: 100%; 
+            max-width: 900px; 
+        }
 
-        /* 2. Clase .visible para mostrar elementos */
-        .visible { display: block !important; }
+        /* Esta clase fuerza la visibilidad */
+        .active-view { 
+            display: block !important; 
+        }
+
+        .hidden { display: none !important; }
 
         /* PANTALLA DE CARGA */
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1b2838; z-index: 9999; display: flex; justify-content: center; align-items: center; color: #66c0f4; font-size: 1.5rem; }
 
-        /* CONTENEDORES */
-        #auth-container, #app-container { width: 100%; max-width: 900px; }
-
-        /* AUTH & CONTROLS */
+        /* ESTILOS DE COMPONENTES */
         .auth-box { background: #171a21; padding: 40px; border-radius: 8px; text-align: center; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .auth-box input { width: 90%; margin-bottom: 15px; display: block; margin: 10px auto; }
         .auth-btn { background: linear-gradient(90deg, #47bfff 0%, #1a9fff 100%); color: white; width: 100%; }
@@ -33,25 +38,20 @@
         .refresh-btn { background: #4caf50; color: white; }
         .logout-btn { background: #d9534f; color: white; font-size: 0.8rem; }
 
-        /* TABLA */
+        /* TABLA E INVENTARIO */
         .inventory-table { width: 100%; border-collapse: collapse; background-color: #171a21; border-radius: 8px; overflow: hidden; margin-bottom: 100px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a475e; }
         th { background-color: #2a475e; color: #66c0f4; }
         .profit-positive { color: #4caf50; font-weight: bold; }
         .profit-negative { color: #f44336; font-weight: bold; }
 
-        /* BOTONES EXTRA */
-        .history-btn { background: #2a475e; color: #66c0f4; border: 1px solid #47bfff; padding: 5px 10px; font-size: 0.8rem; margin-left: 5px;}
-        .delete-btn { background: #c9302c; color: white; padding: 5px 10px; font-size: 0.8rem; }
-
-        /* MODAL GRÁFICA */
+        /* MODAL */
         #chart-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
         .chart-content { background: #1b2838; padding: 20px; border-radius: 8px; width: 90%; max-width: 800px; position: relative; }
         .close-chart { position: absolute; top: 10px; right: 15px; color: white; font-size: 24px; cursor: pointer; }
 
-        /* ADMIN PANEL & SUMMARY */
+        /* ADMIN & SUMMARY */
         #admin-panel { background: #2a2d33; padding: 15px; margin-bottom: 20px; border-left: 4px solid #f0ad4e; }
-        .admin-controls { display: flex; gap: 10px; margin-top: 10px; }
         .summary-bar { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #101216; padding: 15px; display: flex; justify-content: center; gap: 30px; border-top: 2px solid #66c0f4; font-size: 1.2rem; z-index: 100; }
     </style>
 </head>
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <div id="auth-container" class="visible">
+    <div id="auth-container">
         <div class="auth-box">
             <h2>Bienvenido</h2>
             <input type="email" id="email" placeholder="Correo electrónico">
@@ -77,7 +77,7 @@
         </div>
     </div>
 
-    <div id="app-container" class="hidden">
+    <div id="app-container">
         <div class="top-bar">
             <h1>Mi Cartera CS2</h1>
             <div>
@@ -88,7 +88,7 @@
 
         <div id="admin-panel" class="hidden">
             <h3>🛠 Panel Administrador</h3>
-            <div class="admin-controls">
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <input type="text" id="new-skin-name" placeholder="Nombre (ej: Revolution)">
                 <input type="text" id="new-skin-hash" placeholder="Market Hash (ej: Revolution Case)">
                 <button onclick="adminAddSkin()" style="background: #f0ad4e; color: black;">+ Añadir Skin Global</button>
@@ -123,17 +123,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        // --- AQUÍ ESTABA EL ERROR: He quitado la coma sobrante ---
-        import { 
-    getAuth, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // --- 1. PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDTrzjZAnrRhfWyJSBXnmPnc5cVMHhZPy0",
             authDomain: "calculadora2-a85c3.firebaseapp.com",
@@ -144,10 +136,8 @@
             measurementId: "G-WE2ER7DP5K"
         };
 
-        // --- CAMBIA ESTO POR TU EMAIL ---
         const ADMIN_EMAIL = "maksympavelko98@gmail.com"; 
         
-        // INICIALIZACIÓN
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -157,50 +147,8 @@
         let userData = {};
         let chartInstance = null;
 
-        // ---------------- AUTH ----------------
-        // Función helper para manejar visibilidad de forma segura
-        function setVisibility(element, visible) {
-            if (!element) {
-                console.error('setVisibility: elemento no existe');
-                return;
-            }
-            console.log('setVisibility:', element.id, 'visible:', visible);
-            console.log('  Clases ANTES:', element.className);
-            
-            if (visible) {
-                element.classList.remove('hidden');
-                element.classList.add('visible');
-                element.style.display = 'block'; // FORZAR con inline style
-            } else {
-                element.classList.remove('visible');
-                element.classList.add('hidden');
-                element.style.display = 'none'; // FORZAR con inline style
-            }
-            
-            console.log('  Clases DESPUÉS:', element.className);
-            console.log('  Style inline:', element.style.display);
-            console.log('  Display computed:', window.getComputedStyle(element).display);
-        }
-
-        window.handleLogin = async () => {
-            try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
-            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
-        };
-        window.handleRegister = async () => {
-            try { await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
-            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
-        };
-        window.handleLogout = () => {
-            document.getElementById('inventory-body').innerHTML = '';
-            signOut(auth);
-            window.location.reload(); // Recargar para limpiar todo bien
-        };
-
-        // --- SISTEMA DE VISIBILIDAD (Corregido) ---
+        // --- LÓGICA DE AUTENTICACIÓN ---
         onAuthStateChanged(auth, async (user) => {
-            console.log('=== onAuthStateChanged ejecutado ===');
-            console.log('Usuario:', user ? user.email : 'null');
-            
             const loadingScreen = document.getElementById('loading-screen');
             const authContainer = document.getElementById('auth-container');
             const appContainer = document.getElementById('app-container');
@@ -208,39 +156,53 @@
             const adminColumns = document.querySelectorAll('.admin-only');
 
             if (user) {
-                // --- USUARIO LOGUEADO ---
                 currentUser = user;
-                try { document.getElementById('user-email').innerText = user.email; } catch(e){}
+                document.getElementById('user-email').innerText = user.email;
 
-                // 1. Mostrar App y Ocultar Login
-                setVisibility(authContainer, false);
-                setVisibility(appContainer, true);
+                // MOSTRAR APP, OCULTAR LOGIN
+                authContainer.classList.remove('active-view');
+                appContainer.classList.add('active-view');
 
-                // 2. Panel Admin
+                // Lógica Admin
                 if(user.email === ADMIN_EMAIL) {
-                    setVisibility(adminPanel, true);
+                    adminPanel.classList.remove('hidden');
                     adminColumns.forEach(el => el.classList.remove('hidden'));
                 } else {
-                    setVisibility(adminPanel, false);
+                    adminPanel.classList.add('hidden');
                     adminColumns.forEach(el => el.classList.add('hidden'));
                 }
 
                 await cargarDatosIniciales();
-
             } else {
-                // --- USUARIO NO LOGUEADO ---
                 currentUser = null;
-                
-                // 1. Mostrar Login y Ocultar App
-                setVisibility(appContainer, false);
-                setVisibility(authContainer, true);
+                // MOSTRAR LOGIN, OCULTAR APP
+                appContainer.classList.remove('active-view');
+                authContainer.classList.add('active-view');
             }
-            
-            // Quitar pantalla de carga
             loadingScreen.style.display = 'none';
         });
 
-        // ---------------- DATA ----------------
+        window.handleLogin = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try { await signInWithEmailAndPassword(auth, email, pass); } 
+            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+        };
+
+        window.handleRegister = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try { await createUserWithEmailAndPassword(auth, email, pass); } 
+            catch (e) { document.getElementById('auth-msg').innerText = "Error: " + e.message; }
+        };
+
+        window.handleLogout = () => {
+            signOut(auth).then(() => {
+                window.location.reload(); 
+            });
+        };
+
+        // --- LÓGICA DE DATOS ---
         async function cargarDatosIniciales() {
             try {
                 const querySnapshot = await getDocs(collection(db, "skins"));
@@ -252,7 +214,7 @@
                 userData = userSnap.exists() ? userSnap.data().inventory || {} : {};
 
                 renderTable();
-            } catch (e) { console.error("Error cargando:", e); }
+            } catch (e) { console.error("Error cargando datos:", e); }
         }
 
         function renderTable() {
@@ -269,8 +231,8 @@
                     <td><input type="number" value="${saved.buyPrice}" step="0.01" min="0" style="width:70px" onchange="window.saveInput('${skin.hash}', 'buyPrice', this.value)"></td>
                     <td id="price-${index}" class="market-price" data-hash="${skin.hash}">---</td>
                     <td id="profit-${index}">---</td>
-                    <td><button class="history-btn" onclick="window.showHistory('${skin.id}', '${skin.nombre}')">📈 Ver</button></td>
-                    <td class="admin-only ${isAdmin ? '' : 'hidden'}"><button class="delete-btn" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>
+                    <td><button class="history-btn" style="background: #2a475e; color: #66c0f4; border: 1px solid #47bfff;" onclick="window.showHistory('${skin.id}', '${skin.nombre}')">📈 Ver</button></td>
+                    <td class="admin-only ${isAdmin ? '' : 'hidden'}"><button style="background: #c9302c; color: white;" onclick="window.adminDeleteSkin('${skin.id}')">X</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -280,73 +242,16 @@
         window.saveInput = async (hash, field, value) => {
             if (!userData[hash]) userData[hash] = { qty: 0, buyPrice: 0 };
             userData[hash][field] = parseFloat(value) || 0;
-            try { await setDoc(doc(db, "users", currentUser.uid), { inventory: userData }, { merge: true }); calcularTotales(); } catch (e) {}
+            try { 
+                await setDoc(doc(db, "users", currentUser.uid), { inventory: userData }, { merge: true }); 
+                calcularTotales(); 
+            } catch (e) { console.error("Error guardando input:", e); }
         };
 
-        window.adminAddSkin = async () => {
-            const nombre = document.getElementById('new-skin-name').value;
-            const hash = document.getElementById('new-skin-hash').value;
-            if(nombre && hash) {
-                await addDoc(collection(db, "skins"), { nombre, hash });
-                document.getElementById('new-skin-name').value = '';
-                document.getElementById('new-skin-hash').value = '';
-                await cargarDatosIniciales();
-            }
-        };
-
-        window.adminDeleteSkin = async (id) => {
-            if(confirm("¿Borrar skin?")) { await deleteDoc(doc(db, "skins", id)); await cargarDatosIniciales(); }
-        };
-
-        // ---------------- GRÁFICAS ----------------
-        window.showHistory = async (skinId, skinName) => {
-            document.getElementById('chart-modal').style.display = 'flex';
-            const ctx = document.getElementById('skinChart').getContext('2d');
-            if (chartInstance) chartInstance.destroy();
-
-            const q = query(collection(db, "skins", skinId, "history"), orderBy("date", "asc"), limit(50));
-            const snapshot = await getDocs(q);
-            const labels = [], dataPoints = [];
-
-            snapshot.forEach(doc => {
-                const d = doc.data();
-                const dateObj = d.date.toDate ? d.date.toDate() : new Date(d.date);
-                const dateStr = `${dateObj.getDate()}/${dateObj.getMonth()+1} ${dateObj.getHours()}:00`;
-                labels.push(dateStr);
-                dataPoints.push(d.price);
-            });
-
-            if(labels.length === 0) { labels.push("Sin datos"); dataPoints.push(0); }
-
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: `Precio: ${skinName}`,
-                        data: dataPoints,
-                        borderColor: '#47bfff',
-                        backgroundColor: 'rgba(71, 191, 255, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: 'white' } } },
-                    scales: {
-                        y: { ticks: { color: '#8f98a0' }, grid: { color: '#2a475e' } },
-                        x: { ticks: { color: '#8f98a0' }, grid: { color: '#2a475e' } }
-                    }
-                }
-            });
-        };
-        window.closeChart = () => { document.getElementById('chart-modal').style.display = 'none'; };
-
-        // ---------------- PRECIOS LIVE ----------------
         window.actualizarPrecios = async () => {
             const pricesCells = document.querySelectorAll('.market-price');
             pricesCells.forEach(cell => cell.innerHTML = '<span style="color:#f0ad4e">...</span>');
+            
             for (let i = 0; i < globalSkins.length; i++) {
                 const skin = globalSkins[i];
                 const celda = document.getElementById(`price-${i}`);
@@ -361,7 +266,7 @@
                 } catch (e) { celda.innerText = "Err"; }
             }
             calcularTotales();
-        }
+        };
 
         function calcularTotales() {
             let totalInvested = 0, totalNetValue = 0;
@@ -369,8 +274,9 @@
                 const saved = userData[skin.hash] || { qty: 0, buyPrice: 0 };
                 const currentPrice = parseFloat(document.getElementById(`price-${index}`)?.dataset?.price) || 0;
                 const invested = saved.qty * saved.buyPrice;
-                const revenueNet = (currentPrice * saved.qty) * 0.85;
+                const revenueNet = (currentPrice * saved.qty) * 0.85; // Comisión Steam 15%
                 const profit = revenueNet - invested;
+                
                 totalInvested += invested;
                 if(currentPrice > 0) totalNetValue += revenueNet;
                 
@@ -387,6 +293,63 @@
             tSpan.innerText = `${profitTotal > 0 ? '+' : ''}${profitTotal.toFixed(2)}€`;
             tSpan.style.color = profitTotal >= 0 ? '#4caf50' : '#f44336';
         }
+
+        // --- GRÁFICAS Y ADMIN ---
+        window.showHistory = async (skinId, skinName) => {
+            document.getElementById('chart-modal').style.display = 'flex';
+            const ctx = document.getElementById('skinChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const q = query(collection(db, "skins", skinId, "history"), orderBy("date", "asc"), limit(50));
+            const snapshot = await getDocs(q);
+            const labels = [], dataPoints = [];
+
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                const dateObj = d.date.toDate ? d.date.toDate() : new Date(d.date);
+                labels.push(`${dateObj.getDate()}/${dateObj.getMonth()+1}`);
+                dataPoints.push(d.price);
+            });
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Precio: ${skinName}`,
+                        data: dataPoints,
+                        borderColor: '#47bfff',
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: 'rgba(71, 191, 255, 0.1)'
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    scales: { y: { ticks: { color: '#8f98a0' } }, x: { ticks: { color: '#8f98a0' } } }
+                }
+            });
+        };
+
+        window.closeChart = () => { document.getElementById('chart-modal').style.display = 'none'; };
+
+        window.adminAddSkin = async () => {
+            const nombre = document.getElementById('new-skin-name').value;
+            const hash = document.getElementById('new-skin-hash').value;
+            if(nombre && hash) {
+                await addDoc(collection(db, "skins"), { nombre, hash });
+                document.getElementById('new-skin-name').value = '';
+                document.getElementById('new-skin-hash').value = '';
+                await cargarDatosIniciales();
+            }
+        };
+
+        window.adminDeleteSkin = async (id) => {
+            if(confirm("¿Borrar skin de la lista global?")) { 
+                await deleteDoc(doc(db, "skins", id)); 
+                await cargarDatosIniciales(); 
+            }
+        };
     </script>
 </body>
 </html>
