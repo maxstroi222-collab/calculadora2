@@ -169,23 +169,29 @@
             const appContainer = document.getElementById('app-container');
             const adminPanel = document.getElementById('admin-panel');
             const adminColumns = document.querySelectorAll('.admin-only');
+            const userEmailSpan = document.getElementById('user-email');
 
-            if (user) {
+if (user) {
                 currentUser = user;
-                document.getElementById('user-email').innerText = user.email;
+                
+                // --- Lógica Especial para el Admin (Tú) ---
+                if(user.email === ADMIN_EMAIL) {
+                    userEmailSpan.innerHTML = `👑 ${user.email}`; // Añade corona
+                    userEmailSpan.classList.add('admin-rainbow'); // Añade arcoiris
+                    
+                    adminPanel.classList.remove('hidden');
+                    adminColumns.forEach(el => el.classList.remove('hidden'));
+                } else {
+                    userEmailSpan.innerText = user.email; // Usuario normal
+                    userEmailSpan.classList.remove('admin-rainbow');
+                    
+                    adminPanel.classList.add('hidden');
+                    adminColumns.forEach(el => el.classList.add('hidden'));
+                }
 
                 // MOSTRAR APP, OCULTAR LOGIN
                 authContainer.classList.remove('active-view');
                 appContainer.classList.add('active-view');
-
-                // Lógica Admin
-                if(user.email === ADMIN_EMAIL) {
-                    adminPanel.classList.remove('hidden');
-                    adminColumns.forEach(el => el.classList.remove('hidden'));
-                } else {
-                    adminPanel.classList.add('hidden');
-                    adminColumns.forEach(el => el.classList.add('hidden'));
-                }
 
                 await cargarDatosIniciales();
             } else {
@@ -368,5 +374,6 @@
     </script>
 </body>
 </html>
+
 
 
